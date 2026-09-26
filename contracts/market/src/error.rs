@@ -7,11 +7,12 @@ use soroban_sdk::contracterror;
 /// - Position Errors: 10-19
 /// - Oracle Errors: 20-29
 /// - Validation Errors: 30-39
-/// - Authorization Errors: 40-49
+/// - Authorization Errors: 41-49
 /// - Token Errors: 50-59
 /// - Arithmetic Errors: 60-69
 /// - Treasury Errors: 70-79
 /// - Reconciliation Errors: 80-89
+/// - Conservation Errors: 90-99
 ///
 /// # Stable not-found codes
 ///
@@ -86,6 +87,15 @@ pub enum ContractError {
     /// replayed close request) is rejected so callers cannot re-run the
     /// money-path side effects (settlement gating, event emission) twice.
     MarketAlreadyClosed = 8,
+
+    /// A settlement claim was submitted before the market was resolved.
+    ///
+    /// Claims are only valid once the oracle has resolved the market. This is
+    /// enforced contract-side (not by clients) so an untrusted caller cannot
+    /// bypass the resolve gate and drain liquidity against an unresolved
+    /// outcome. Fail-closed: the claim is rejected outright rather than
+    /// silently deferred.
+    ClaimBeforeResolve = 9,
 
     // ========== Position Errors (10-19) ==========
     /// User does not have enough collateral locked to perform this operation.
@@ -191,6 +201,18 @@ pub enum ContractError {
     /// Market metadata URI is invalid (e.g. exceeds the maximum length).
     InvalidMetadataUri = 37,
 
+    /// Market metadata URI does not use the `https` scheme (#889).
+    ///
+    /// Metadata URIs are restricted to an https-only allowlist. Any other
+    /// scheme — `http`, `ipfs`, `data`, `javascript`, `file`, or a scheme-less
+    /// / relative reference — is rejected outright. This is fail-closed: an
+    /// untrusted caller cannot smuggle in a non-https URI (e.g. a `javascript:`
+    /// payload for a frontend to execute) by relying on a permissive default.
+    ///
+    /// Distinct from `InvalidMetadataUri` (37), which covers length/emptiness
+    /// violations, so callers and metrics can tell the two failure modes apart.
+    MetadataUriSchemeNotAllowed = 40,
+
     /// Fee rate is invalid (e.g. exceeds the configured fee cap or is out of range).
     InvalidFeeRate = 38,
 
@@ -204,14 +226,52 @@ pub enum ContractError {
 
     /// Treasury address is invalid (e.g. contract address or zero address).
     ///
-    /// The admin-only `set_treasury` setter (#857) must receive a valid user
-    /// account address. Contract addresses and reserved/zero addresses are
-    /// rejected so fees cannot be routed to an address the admin does not
-    /// actually control.
-    InvalidTreasury = 40,
+    /// The admin-only `set_treasury` setter (
 
     // ========== Authorization Errors (41-49) ==========
     /// Caller is not authorized to perform this operation.
     ///
     /// The caller must be the admin or an address explicitly granted the
-    /// required role. Deny-by-default
+    /// required role. Deny-by-default: any privileged entrypoint that cannot
+    /// positively confirm the caller's role returns this error rather than
+    /// proceeding.
+    Unauthorized = 41,
+
+    // ========== Deployment Errors (90-99) ==========
+    /// The supplied deployment ID is not registered for this network.
+    ///
+    /// Deployment IDs are fail-closed: an unknown, unregistered, or
+    /// mismatched ID is rejected outright rather than silently defaulted to
+    /// a built-in deployment. Callers must supply an ID that has been
+    /// explicitly registered for the active network (testnet vs mainnet).
+    UnknownDeploymentId = 90,
+
+    /// The supplied deployment ID is registered but does not match the
+    /// active network (e.g. a testnet ID used on mainnet).
+    ///
+    /// Address drift between networks is a money-path hazard, so a mismatch
+    /// is rejected instead of being coerced to the local network's default.
+    DeploymentIdNetworkMismatch = 91,
+
+    /// The deployment ID is malformed (empty, wrong length, or contains
+    /// characters outside the allowed set).
+    ///
+    /// Rejected before any registry lookup so adversarial input cannot be
+    /// used to probe or grief the deployment registry.
+    InvalidDeploymentId = 92,
+
+    /// The deployment registry is unavailable (RPC/DB/Redis outage) and the
+    /// requested write cannot be safely validated.
+    ///
+    /// Fail-closed: when the registry cannot be read, deployment-ID-gated
+    /// writes are rejected rather than assumed valid.
+    DeploymentRegistryUnavailable = 93,
+
+    /// The deployment ID has already been registered and cannot be
+    /// overwritten.
+    ///
+    /// Registration is idempotency-hostile by design: replayed or concurrent
+    /// register requests are rejected so an untrusted caller cannot override
+    /// an existing deployment mapping.
+    DeploymentIdAlreadyRegistered = 94,
+}
