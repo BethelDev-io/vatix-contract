@@ -215,4 +215,50 @@ pub enum ContractError {
     ///
     /// The admin-only `set_treasury` setter (
 
-/* … truncated 2349 chars — edit only what you need near the top … */
+    // ========== Authorization Errors (41-49) ==========
+    /// Caller is not authorized to perform this operation.
+    ///
+    /// The caller must be the admin or an address explicitly granted the
+    /// required role. Deny-by-default: any privileged entrypoint that cannot
+    /// positively confirm the caller's role returns this error rather than
+    /// proceeding.
+    Unauthorized = 41,
+
+    // ========== Deployment Errors (90-99) ==========
+    /// The supplied deployment ID is not registered for this network.
+    ///
+    /// Deployment IDs are fail-closed: an unknown, unregistered, or
+    /// mismatched ID is rejected outright rather than silently defaulted to
+    /// a built-in deployment. Callers must supply an ID that has been
+    /// explicitly registered for the active network (testnet vs mainnet).
+    UnknownDeploymentId = 90,
+
+    /// The supplied deployment ID is registered but does not match the
+    /// active network (e.g. a testnet ID used on mainnet).
+    ///
+    /// Address drift between networks is a money-path hazard, so a mismatch
+    /// is rejected instead of being coerced to the local network's default.
+    DeploymentIdNetworkMismatch = 91,
+
+    /// The deployment ID is malformed (empty, wrong length, or contains
+    /// characters outside the allowed set).
+    ///
+    /// Rejected before any registry lookup so adversarial input cannot be
+    /// used to probe or grief the deployment registry.
+    InvalidDeploymentId = 92,
+
+    /// The deployment registry is unavailable (RPC/DB/Redis outage) and the
+    /// requested write cannot be safely validated.
+    ///
+    /// Fail-closed: when the registry cannot be read, deployment-ID-gated
+    /// writes are rejected rather than assumed valid.
+    DeploymentRegistryUnavailable = 93,
+
+    /// The deployment ID has already been registered and cannot be
+    /// overwritten.
+    ///
+    /// Registration is idempotency-hostile by design: replayed or concurrent
+    /// register requests are rejected so an untrusted caller cannot override
+    /// an existing deployment mapping.
+    DeploymentIdAlreadyRegistered = 94,
+}

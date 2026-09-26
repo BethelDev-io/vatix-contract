@@ -588,3 +588,6 @@ Part of the [Vatix Protocol](https://github.com/vatix-protocol)
 
 <!-- handsoff-issue-878 -->
 - #878: Storage migration rollback procedures
+
+<!-- handsoff-issue-890 -->
+- #890: Collect fee callback fully implemented
