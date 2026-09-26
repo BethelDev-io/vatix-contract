@@ -585,3 +585,6 @@ Part of the [Vatix Protocol](https://github.com/vatix-protocol)
 
 <!-- handsoff-issue-848 -->
 - #848: Market: create with metadata URI validation/caps
+
+<!-- handsoff-issue-878 -->
+- #878: Storage migration rollback procedures

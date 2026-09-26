@@ -16,6 +16,20 @@ This policy covers the Vatix-Protocol monorepo, including `vatix-contract` (Soro
 - Every external entrypoint is rate-limited and authorized.
 - Money-path and mainnet-affecting changes land behind a feature flag or kill-switch with a documented rollback.
 
+## Upgrade Security
+
+Multi-contract upgrades are a privileged, money-path operation. The exact
+upgrade order, invariants, preconditions, and rollback steps are documented in
+[`scripts/upgrade/UPGRADE_PLAYBOOK.md`](scripts/upgrade/UPGRADE_PLAYBOOK.md).
+
+Key security invariants for upgrades:
+
+- Dependencies are upgraded before dependents; never the reverse.
+- Storage version compatibility is verified before any write.
+- Admin/authz roles are preserved across upgrades.
+- Upgrades are fail-closed: missing env, wrong network, or failed preflight
+  aborts the run.
+
 ## Staging Dry-Run Checklist (Automated)
 
 The staging dry-run is automated by `scripts/upgrade/staging_dry_run.sh`, which executes the steps described in
@@ -54,11 +68,10 @@ signatures, but it is never authoritative for protocol state.
   connected network and contract id before signing, and refuse to sign when they
   do not match the configured deployment.
 
-## Localnet Deploy
+All upgrade scripts must be run by an authorized operator against the intended
+network. Untrusted clients cannot bypass upgrade policy.
 
-The contributor localnet deploy path (build, deploy, initialize, smoke-verify)
-is documented in [`CONTRIBUTING.md`](./CONTRIBUTING.md#localnet-deploy-contributor-path).
-Contributors must:
+## Supported Versions
 
 - Use throwaway keys generated for localnet only; never reuse testnet or mainnet
   keys on a local network, and never commit them.
@@ -67,8 +80,14 @@ testnet/mainnet apply locally, so the path exercises the real policy.
 - Keep the deploy behind the documented feature flag/kill-switch when it touches
   any money path, and record the rollback steps in the PR description.
 
-## Mainnet Safety
+## Supported Versions
 
-Irreversible mainnet changes require the readiness checklist and are out of scope
-for the localnet contributor path. Do not point localnet tooling at mainnet
-endpoints or keys.
+| Version | Supported |
+| ------- | --------- |
+| latest  | ✅        |
+| < latest | ❌       |
+
+## Disclosure Policy
+
+We follow coordinated disclosure. Once a fix is available, we will publish a
+security advisory and credit the reporter (unless anonymity is requested).
